@@ -10,4 +10,8 @@ object UpdatableManager {
     fun run() {
         updatableList.forEach { it.update() }
     }
+
+    fun clear() {
+        updatableList.clear()
+    }
 }

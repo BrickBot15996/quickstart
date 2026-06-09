@@ -6,6 +6,7 @@ import android.util.Log
 import brickbot.quickstart.follower.Localizer
 import brickbot.quickstart.commandbase.CommandScheduler
 import brickbot.quickstart.devices.DeviceManager
+import brickbot.quickstart.devices.HubManager
 import brickbot.quickstart.follower.Pose
 import brickbot.quickstart.subsystems.Robot
 import brickbot.quickstart.recordautonomous.Bindings
@@ -30,6 +31,10 @@ abstract class BrickOpMode: LinearOpMode() {
     protected val subsystemManager = SubsystemManager
     protected val updatableManager = UpdatableManager
 
+    private val hubManager = HubManager
+
+    // FIXME: Pretty sure this generates a duplicate robot instance,
+    //        different from the one the user will use. Needs to be looked into and fixed
     // This is the robot passed by the user to have its init and update methods called
     private lateinit var internalRobot: Robot
 
@@ -91,37 +96,44 @@ abstract class BrickOpMode: LinearOpMode() {
     abstract fun onRecordingEnd()
 
     override fun runOpMode() {
-        commandScheduler.reset()
-
-        // This calls the init methods automatically for all devices
-        deviceManager.initDevices(hardwareMap)
-
         // This checks for all annotations of interest, ensures they make sense
         // and then reads the data from them
         handleAnnotations()
 
-        // This block calls the default init method and the opMode type specific init methods
-        internalRobot.init()
-        if (isAutonomous()) {
-            internalRobot.autonomousInit()
-        } else {
-            internalRobot.teleOpInit()
-        }
+        initInfrastructure()
 
+        telemetry.addLine("Infrastructure has finished setting up.")
+        telemetry.update()
+
+        // This is the user's onInit method
         onInit()
+
+        telemetry.addLine("OnInit has finished running.")
+        telemetry.update()
+
         while (!isStarted() && !isStopRequested) {
+            // This is the user's initLoop method
             initLoop()
+
             runInfrastructure()
+
+            telemetry.addLine("InitLoop is running. OpMode should be ready for start.")
+            telemetry.update()
         }
         waitForStart()
 
+        // This timestamp is used to calculate the loop times
         opModeStartTimestamp = System.nanoTime()
+
+        // This is the user's onStart method
         onStart()
 
         while (opModeIsActive() && !isStopRequested) {
-            // This is the user's run method
+            // This is the user's run method that runs until stop is requested or the OpMode ends
             run()
 
+            // TODO: Separate the recording and playback behaviours into separate methods
+            //  to clean up the runOpMode method
             if (isRecordingOpMode()) {
                 if (gamepad1.shareWasReleased()) {
                     // Clear the latest saved recording and invoke the gc to release memory
@@ -162,9 +174,6 @@ abstract class BrickOpMode: LinearOpMode() {
 
             }
 
-            bindings.update(gamepad1, gamepad2)
-            internalRobot.update()
-
             runInfrastructure()
 
             loopFrequency = ++loopCount / ((System.nanoTime() - opModeStartTimestamp) * 1e-9)
@@ -175,13 +184,25 @@ abstract class BrickOpMode: LinearOpMode() {
             }
         }
 
-        // This clears all the devices, unless the opMode throws an exception.
-        // I haven't yet found a way to clear them in that scenario.
-        deviceManager.clear()
 
-        // This clears all the subsystems, unless the opMode throws an exception.
-        // I haven't yet found a way to clear them in that scenario.
-        subsystemManager.clear()
+    }
+
+    private fun initInfrastructure() {
+        commandScheduler.reset()
+
+        // This calls the init methods automatically for all devices
+        deviceManager.initDevices(hardwareMap)
+
+        // This grabs the hubs from the hardware map
+        hubManager.init(hardwareMap)
+
+        // This block calls the default init method and the opMode type specific init methods
+        internalRobot.init()
+        if (isAutonomous()) {
+            internalRobot.autonomousInit()
+        } else {
+            internalRobot.teleOpInit()
+        }
     }
 
     /**
@@ -189,9 +210,28 @@ abstract class BrickOpMode: LinearOpMode() {
      * If any other infrastructure gets written, it should be called inside here.
      */
     private fun runInfrastructure() {
+        bindings.update(gamepad1, gamepad2)
+        internalRobot.update()
+
         commandScheduler.run()
         subsystemManager.run()
         updatableManager.run()
+
+        hubManager.clearCache()
+    }
+
+    private fun stopInfrastructure() {
+        // This clears all the devices, unless the opMode throws an exception.
+        // I haven't yet found a way to clear them in that scenario.
+        deviceManager.clear()
+
+        // This clears all the subsystems, unless the opMode throws an exception.
+        // I haven't yet found a way to clear them in that scenario.
+        subsystemManager.clear()
+
+        updatableManager.clear()
+
+        commandScheduler.reset()
     }
 
     private fun handleAnnotations() {
@@ -243,29 +283,31 @@ abstract class BrickOpMode: LinearOpMode() {
     }
 
     private fun checkAnnotationsMakeSense() {
-        if (!submittedRobot()) {
-            throw RuntimeException("What will this opMode do without a robot?")
-        }
+        // FIXME: Add this restriction back after validating the behaviour of submitting a robot
+        //        regarding the concern raised at its declaration
+//        if (!submittedRobot()) {
+//            throw RuntimeException("You need to add an @Robot annotation that contains the Robot instance.")
+//        }
 
         if (isAutonomous()) {
             if (isRecordingOpMode()) {
-                throw RuntimeException("An Autonomous cannot be a Recording OpMode.")
+                throw RuntimeException("An Autonomous cannot be an @Recording annotated OpMode.")
             }
             if (isPlaybackOpMode() && !submittedBindings()) {
-                throw RuntimeException("You did not submit bindings for a playback Autonomous.")
+                throw RuntimeException("You need to add an @Bindings annotation containing the Bindings to be able to playback a recording.")
             }
         } else if (isTeleOp()) {
             if (!submittedBindings()) {
-                throw RuntimeException("You did not submit bindings for TeleOp. How do you plan on controlling the robot?")
+                throw RuntimeException("You need to add an @Bindings annotation containing the Bindings to be able to control the robot in TeleOp.")
             }
             if (isPlaybackOpMode()) {
-                throw RuntimeException("A TeleOp cannot be a Playback OpMode.")
+                throw RuntimeException("A TeleOp cannot be an @Playback annotated OpMode.")
             }
             if (isRecordingOpMode() && !submittedLocalizer()) {
-                throw RuntimeException("Cannot record without submitting a localizer.")
+                throw RuntimeException("You need to add an @Localizer annotation containing the Localizer to be able to record a TeleOp sequence.")
             }
         } else {
-            throw RuntimeException("OpMode is neither declared as @Autonomous, nor @TeleOp.")
+            throw RuntimeException("Your OpMode needs to be annotated as @Autonomous or @TeleOp.")
         }
     }
 
@@ -316,6 +358,7 @@ abstract class BrickOpMode: LinearOpMode() {
         readStates = output
     }
 
+    // TODO: Make this async
     private fun writeFile() {
         val robotStateArray = JSONArray()
 
