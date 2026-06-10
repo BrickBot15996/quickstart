@@ -25,13 +25,73 @@ import java.io.FileInputStream
 import java.io.FileWriter
 import java.io.InputStreamReader
 
+/**
+ * This is the OpMode class that you need to extend whenever you want to create a new OpMode.
+ *
+ * There are 7 available annotation types for this class:
+ * 1. `@TeleOp` - Marks this OpMode as TeleOp and makes it show up in the TeleOp list on the driver station.
+ * 2. `@Autonomous` - Marks this OpMode as Autonomous and makes it show up in the Autonomous list on the driver station.
+ * 3. `@Robot ` - Accepts your robot class so the OpMode can call the `init()` and `update()` methods;
+ * 4. `@Bindings` - Accepts your bindings class so the OpMode can call the `update()` method with
+ * the gamepads as parameters.
+ * 5. `@Localizer` - Accepts your localizer instance so the OpMode can track the position of your robot,
+ * generally used for `@Recording` or `@Playback` OpModes.
+ * 6. `@Recording` - Marks this OpMode as Recording, giving you the functionality to save a 30-second
+ * sequence of robot and gamepad states to a file so they can be replayed.
+ * 7. `@Playback` - Marks this OpMode as Playback, allowing you to play a previous recording of a
+ * 30-second TeleOp sequence.
+ *
+ * There are 4 available functions at your disposal to override:
+ * - `onInit()` - This method runs once when init is pressed on the driver station.
+ * - `initLoop()` - This method runs continuously after `onInit()`, until start is pressed on the driver station,
+ * - `onStart()` - This method runs once after start is pressed on the driver station.
+ * - `run()` - This method run continuously after `onStart()`, until stop is pressed on the driver station.
+ *
+ * There are 4 user-accessible features inside BrickOpMode:
+ * 1. `commandScheduler` - The globally unique instance of `CommandScheduler`.
+ * 2. `subsystemManager` - The globally unique instance of `SubsystemManager`.
+ * 3. `updatableManager` - The globally unique instance of 'UpdatableManager'.
+ * 4. `hubManager` - The globally unique instance of 'HubManager'.
+ *
+ * How the `@Recording` works:
+ * - `onRecordingStart()` - This method can be overridden. It gets called at the start of a recording
+ * and can be used to simulate the behavior at the start of autonomous (e.g. Having the flywheel spin
+ * up at the start of the simulation, so it can be accurately reproduced in playback).
+ * - `onRecordingEnd()` - This method can be overridden. It gets called 30 seconds after the start
+ * of a recording. It generally should be used to go back to the state previous to the recording starting
+ * (referring to the previous example, this method could turn off the flywheel, in preparation for
+ * another recording in the same OpMode run).
+ * - Pressing `share` starts the recording, and it automatically counts to 30 seconds.
+ * - After the 30 seconds are up, both gamepads will start rumbling for about 2 seconds, trying to
+ * alert the drivers that any input after that point will not be saved.
+ * - After the end of a recording, you can press the `touchpad` to save the robot and gamepad states
+ * to the file passed in the `@Recording` annotation. The file will show up on the REV Control Hub
+ * inside "FIRST/Recordings". WARNING: If you try to save a file as "Autonomous.json", the filename
+ * might change to "Autonomous1.json" or "Autonomous2.json" or so on, to avoid deleting previously
+ * recorded files.
+ *
+ * How the `@Playback` works:
+ * - Yet to be implemented :/
+ *
+ * @see TeleOp
+ * @see Autonomous
+ * @see brickbot.quickstart.opmode.annotations.Robot
+ * @see brickbot.quickstart.opmode.annotations.Bindings
+ * @see brickbot.quickstart.opmode.annotations.Localizer
+ * @see brickbot.quickstart.opmode.annotations.Recording
+ * @see brickbot.quickstart.opmode.annotations.Playback
+ * @see CommandScheduler
+ * @see SubsystemManager
+ * @see UpdatableManager
+ * @see HubManager
+ * @see DeviceManager
+ */
 abstract class BrickOpMode: LinearOpMode() {
     // This is the infrastructure
     protected val commandScheduler = CommandScheduler
     protected val subsystemManager = SubsystemManager
     protected val updatableManager = UpdatableManager
-
-    private val hubManager = HubManager
+    protected val hubManager = HubManager
 
     // FIXME: Pretty sure this generates a duplicate robot instance,
     //        different from the one the user will use. Needs to be looked into and fixed
@@ -184,7 +244,7 @@ abstract class BrickOpMode: LinearOpMode() {
             }
         }
 
-
+        stopInfrastructure()
     }
 
     private fun initInfrastructure() {
@@ -284,7 +344,7 @@ abstract class BrickOpMode: LinearOpMode() {
 
     private fun checkAnnotationsMakeSense() {
         // FIXME: Add this restriction back after validating the behaviour of submitting a robot
-        //        regarding the concern raised at its declaration
+        //        regarding the concern raised at its declaration above
 //        if (!submittedRobot()) {
 //            throw RuntimeException("You need to add an @Robot annotation that contains the Robot instance.")
 //        }

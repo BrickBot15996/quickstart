@@ -20,7 +20,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function schedules an enumeration of commands and removes any declared conflicts from the scheduler.
+     * This method schedules an enumeration of commands and removes any declared conflicts from the scheduler.
      * @param commands The enumeration of commands desired to be scheduled.
      */
     fun schedule(vararg commands: Command) {
@@ -28,7 +28,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function schedules a list of commands and removes any declared conflicts from the scheduler.
+     * This method schedules a list of commands and removes any declared conflicts from the scheduler.
      * @param commands The list of commands desired to be scheduled.
      */
     fun schedule(commands: List<Command>) {
@@ -38,11 +38,11 @@ object CommandScheduler {
     }
 
     /**
-     * This function schedules a command and removes any declared conflicts from the scheduler.
+     * This method schedules a command and removes any declared conflicts from the scheduler.
      * @param command The desired command to be scheduled.
      */
     fun schedule(command: Command) {
-        val conflicts = conflictMap.getOrDefault(command.getCommandName(), mutableListOf())
+        val conflicts = conflictMap.getOrDefault(command.commandName, mutableListOf())
 
         if (!conflicts.isEmpty()) {
             remove(conflicts)
@@ -52,7 +52,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function removes an enumeration of commands from the list of scheduled commands.
+     * This method removes an enumeration of commands from the list of scheduled commands.
      * @param commandNames The enumeration of command names to be removed.
      */
     fun remove(vararg commandNames: String) {
@@ -60,7 +60,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function removes a list of commands from the list of scheduled commands.
+     * This method removes a list of commands from the list of scheduled commands.
      * @param commandNames The list of command names to be removed.
      */
     fun remove(commandNames: List<String>) {
@@ -70,15 +70,15 @@ object CommandScheduler {
     }
 
     /**
-     * This function removes a command from the list of scheduled commands.
+     * This method removes a command from the list of scheduled commands.
      * @param commandName The name of the command to be removed.
      */
     fun remove(commandName: String) {
-        commands = commands.filter { it.getCommandName() != commandName }.toMutableList()
+        commands = commands.filter { it.commandName != commandName }.toMutableList()
     }
 
     /**
-     * This function runs the list of scheduled commands.
+     * This method runs the list of scheduled commands.
      */
     fun run() {
         if (commands.isEmpty()) return
@@ -87,7 +87,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function establishes a group of commands that cannot run simultaneously. When one
+     * This method establishes a group of commands that cannot run simultaneously. When one
      * of these commands is added, the scheduler tries to remove all other ones from the list
      * of active commands.
      * @param commandNames Enumeration of command names that should not run concurrently.
@@ -97,7 +97,7 @@ object CommandScheduler {
     }
 
     /**
-     * This function establishes a group of commands that cannot run simultaneously. When one
+     * This method establishes a group of commands that cannot run simultaneously. When one
      * of these commands is added, the scheduler tries to remove all other ones from the list
      * of active commands.
      * @param commandNames List of command names that should not run concurrently.

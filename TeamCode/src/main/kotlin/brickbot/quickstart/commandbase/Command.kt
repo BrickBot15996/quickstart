@@ -1,7 +1,7 @@
 package brickbot.quickstart.commandbase
 
 abstract class Command @JvmOverloads constructor(
-    protected var commandName: String = ""
+    var commandName: String = ""
 ) : Cloneable {
     /**
      * Runs the command
@@ -14,12 +14,4 @@ abstract class Command @JvmOverloads constructor(
      * @return the cloned command
      */
     public abstract override fun clone(): Command
-
-    /**
-     * Gets the name of the command
-     * @return the name of the command
-     */
-    fun getCommandName(): String {
-        return commandName
-    }
 }
