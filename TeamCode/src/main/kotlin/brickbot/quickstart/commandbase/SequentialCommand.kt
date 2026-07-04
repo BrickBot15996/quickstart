@@ -11,13 +11,11 @@ class SequentialCommand @JvmOverloads constructor(
     constructor(commandName: String = "", vararg commands: Command): this(commandName, commands.toMutableList())
 
     override fun run(): Boolean {
-        if (commands.isEmpty())
-            return true
-
-        if (commands.first().run())
+        while (!commands.isEmpty() && commands.first().run()) {
             commands.removeAt(0)
+        }
 
-        return false
+        return commands.isEmpty()
     }
 
     override fun clone(): Command {

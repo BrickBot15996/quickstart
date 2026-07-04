@@ -31,14 +31,15 @@ import java.io.InputStreamReader
  * There are 7 available annotation types for this class:
  * 1. `@TeleOp` - Marks this OpMode as TeleOp and makes it show up in the TeleOp list on the driver station.
  * 2. `@Autonomous` - Marks this OpMode as Autonomous and makes it show up in the Autonomous list on the driver station.
- * 3. `@Robot ` - Accepts your robot class so the OpMode can call the `init()` and `update()` methods;
- * 4. `@Bindings` - Accepts your bindings class so the OpMode can call the `update()` method with
+ * 3. `@Disabled` - Hides this OpMode on the driver station.
+ * 4. `@Robot` - Accepts your robot class so the OpMode can call the `init()` and `update()` methods;
+ * 5. `@Bindings` - Accepts your bindings class so the OpMode can call the `update()` method with
  * the gamepads as parameters.
- * 5. `@Localizer` - Accepts your localizer instance so the OpMode can track the position of your robot,
+ * 6. `@Localizer` - Accepts your localizer instance so the OpMode can track the position of your robot,
  * generally used for `@Recording` or `@Playback` OpModes.
- * 6. `@Recording` - Marks this OpMode as Recording, giving you the functionality to save a 30-second
+ * 7. `@Recording` - Marks this OpMode as Recording, giving you the functionality to save a 30-second
  * sequence of robot and gamepad states to a file so they can be replayed.
- * 7. `@Playback` - Marks this OpMode as Playback, allowing you to play a previous recording of a
+ * 8. `@Playback` - Marks this OpMode as Playback, allowing you to play a previous recording of a
  * 30-second TeleOp sequence.
  *
  * There are 4 available functions at your disposal to override:
@@ -50,8 +51,8 @@ import java.io.InputStreamReader
  * There are 4 user-accessible features inside BrickOpMode:
  * 1. `commandScheduler` - The globally unique instance of `CommandScheduler`.
  * 2. `subsystemManager` - The globally unique instance of `SubsystemManager`.
- * 3. `updatableManager` - The globally unique instance of 'UpdatableManager'.
- * 4. `hubManager` - The globally unique instance of 'HubManager'.
+ * 3. `updatableManager` - The globally unique instance of `UpdatableManager`.
+ * 4. `hubManager` - The globally unique instance of `HubManager`.
  *
  * How the `@Recording` works:
  * - `onRecordingStart()` - This method can be overridden. It gets called at the start of a recording
@@ -148,12 +149,12 @@ abstract class BrickOpMode: LinearOpMode() {
     /**
      * This method is called at the start of a TeleOp recording.
      */
-    abstract fun onRecordingStart()
+    open fun onRecordingStart() { }
 
     /**
      * This method is called at the end of a TeleOp recording.
      */
-    abstract fun onRecordingEnd()
+    open fun onRecordingEnd() { }
 
     override fun runOpMode() {
         // This checks for all annotations of interest, ensures they make sense
@@ -320,6 +321,9 @@ abstract class BrickOpMode: LinearOpMode() {
 
         bindings = bindingsAnnotation!!.bindings.java.getDeclaredConstructor().newInstance()
         localizer = localizerAnnotation!!.localizer.java.getDeclaredConstructor().newInstance()
+
+        // FIXME: This definitely creates a duplicate separate instance. Needs fixing.
+        internalRobot = robotAnnotation!!.robot.java.getDeclaredConstructor().newInstance()
 
         handleFilename()
     }

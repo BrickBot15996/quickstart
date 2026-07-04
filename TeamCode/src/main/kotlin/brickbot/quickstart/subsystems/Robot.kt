@@ -4,6 +4,6 @@ abstract class Robot {
     abstract fun init()
     abstract fun update()
 
-    fun autonomousInit() { }
-    fun teleOpInit() { }
+    open fun autonomousInit() { }
+    open fun teleOpInit() { }
 }
