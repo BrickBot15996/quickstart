@@ -21,6 +21,7 @@ class BrickMotor(deviceName: String): DcMotorEx, BrickDevice(deviceName) {
     private var lastPower = 0.0
 
     override fun init(hwMap: HardwareMap) {
+        System.out.println("Motor ${this.deviceName} init")
         motor = hwMap.get(DcMotorEx::class.java, deviceName)
     }
 

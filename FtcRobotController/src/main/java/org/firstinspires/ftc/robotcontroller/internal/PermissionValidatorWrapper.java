@@ -28,22 +28,15 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.firstinspires.ftc.robotcontroller.internal;
-
 import android.Manifest;
 import android.os.Bundle;
-
 import com.qualcomm.ftcrobotcontroller.R;
-
 import org.firstinspires.ftc.robotcore.internal.system.Misc;
 import org.firstinspires.ftc.robotcore.internal.system.PermissionValidatorActivity;
-
 import java.util.ArrayList;
 import java.util.List;
-
 public class PermissionValidatorWrapper extends PermissionValidatorActivity {
-
     private final String TAG = "PermissionValidatorWrapper";
-
     /*
      * The list of dangerous permissions the robot controller needs.
      */
@@ -55,9 +48,7 @@ public class PermissionValidatorWrapper extends PermissionValidatorActivity {
         add(Manifest.permission.ACCESS_FINE_LOCATION);
         add(Manifest.permission.READ_PHONE_STATE);
     }};
-
     private final static Class startApplication = FtcRobotControllerActivity.class;
-
     public String mapPermissionToExplanation(final String permission) {
         if (permission.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             return Misc.formatForUser(R.string.permRcWriteExternalStorageExplain);

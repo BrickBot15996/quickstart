@@ -11,15 +11,21 @@ object HubManager {
 
     fun init(hardwareMap: HardwareMap) {
         try {
-            // Pull the first appearance of a Control Hub cause realistically there should not be
-            // more than one.
-            controlHub = hardwareMap.getAll(LynxModule::class.java)
-                .first { it.deviceName.lowercase().contains("control") }
+            val modules = hardwareMap.getAll(LynxModule::class.java)
 
+            // Strategy 1: Find module where isParent() is true (Control Hub is always the parent module)
+            // Strategy 2: Fallback to searching deviceName or taking the first available module
+            controlHub = modules.firstOrNull { it.isParent }
+                ?: modules.firstOrNull { it.deviceName.contains("control", ignoreCase = true) }
+                        ?: modules.firstOrNull()
+                        ?: throw IllegalStateException("No LynxModules found in hardware map.")
+
+            // Enable manual bulk caching for faster loop execution
             controlHub.bulkCachingMode = LynxModule.BulkCachingMode.MANUAL
-        } catch(e: Exception) {
+
+        } catch (e: Exception) {
             throw RuntimeException(
-                "Make sure your Control Hub uses the default naming pattern: 'Control Hub X', where X is a number."
+                "Failed to initialize Control Hub LynxModule: ${e.message}", e
             )
         }
 

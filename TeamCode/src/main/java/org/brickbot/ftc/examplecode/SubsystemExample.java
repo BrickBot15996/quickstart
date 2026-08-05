@@ -11,25 +11,18 @@ import brickbot.quickstart.devices.BrickServo;
 import brickbot.quickstart.subsystems.Subsystem;
 
 public class SubsystemExample extends Subsystem {
-    private final BrickMotor motor = new BrickMotor("MotorExample");
-    private final BrickServo servo = new BrickServo("ServoExample");
-    private final BrickCRServo crServo = new BrickCRServo("CRServoExample");
-    private final BrickEncoder encoder = new BrickEncoder("EncoderExample");
+//    private final BrickMotor motor = new BrickMotor("MotorExample");
+//    private final BrickServo servo = new BrickServo("ServoExample");
+//    private final BrickCRServo crServo = new BrickCRServo("CRServoExample");
+//    private final BrickEncoder encoder = new BrickEncoder("EncoderExample");
 
     @Override
     public void init(@NotNull HardwareMap hwMap) {
-        motor.setPower(0.0);
-
-        servo.setPosition(0.0);
-
-        crServo.setPower(0.0);
-
-        encoder.reset();
     }
 
     @Override
     public void read() {
-
+        //one subsystem
     }
 
     @Override

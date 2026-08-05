@@ -5,10 +5,9 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import brickbot.quickstart.opmode.BrickOpMode;
 
-@Disabled
 @TeleOp(name = "TeleOpExample", group = "Examples")
-@brickbot.quickstart.opmode.annotations.Robot(robot = RobotExample.class)
-@brickbot.quickstart.opmode.annotations.Bindings(bindings = BindingsExample.class)
+@brickbot.quickstart.opmode.annotations.Robot(robot = RobotHardware.class)
+@brickbot.quickstart.opmode.annotations.Bindings(bindings = TeleOpBindings.class)
 public class TeleOpExample extends BrickOpMode {
     @Override
     public void onInit() {
@@ -17,7 +16,6 @@ public class TeleOpExample extends BrickOpMode {
 
     @Override
     public void initLoop() {
-
     }
 
     @Override
@@ -27,7 +25,6 @@ public class TeleOpExample extends BrickOpMode {
 
     @Override
     public void run() {
-
     }
 }
 

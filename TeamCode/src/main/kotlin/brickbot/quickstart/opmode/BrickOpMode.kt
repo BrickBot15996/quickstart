@@ -97,7 +97,7 @@ abstract class BrickOpMode: LinearOpMode() {
     // FIXME: Pretty sure this generates a duplicate robot instance,
     //        different from the one the user will use. Needs to be looked into and fixed
     // This is the robot passed by the user to have its init and update methods called
-    private lateinit var internalRobot: Robot
+    //private lateinit var internalRobot: Robot
 
     // This inits all the devices in the hardwareMap
     private val deviceManager = DeviceManager
@@ -185,14 +185,11 @@ abstract class BrickOpMode: LinearOpMode() {
 
         // This timestamp is used to calculate the loop times
         opModeStartTimestamp = System.nanoTime()
-
         // This is the user's onStart method
         onStart()
-
         while (opModeIsActive() && !isStopRequested) {
             // This is the user's run method that runs until stop is requested or the OpMode ends
             run()
-
             // TODO: Separate the recording and playback behaviours into separate methods
             //  to clean up the runOpMode method
             if (isRecordingOpMode()) {
@@ -236,7 +233,7 @@ abstract class BrickOpMode: LinearOpMode() {
             }
 
             runInfrastructure()
-
+            bindings.update(gamepad1, gamepad2)
             loopFrequency = ++loopCount / ((System.nanoTime() - opModeStartTimestamp) * 1e-9)
             telemetry.addData("Loop frequency:", "%ldHz", loopFrequency)
 
@@ -258,40 +255,31 @@ abstract class BrickOpMode: LinearOpMode() {
         hubManager.init(hardwareMap)
 
         // This block calls the default init method and the opMode type specific init methods
-        internalRobot.init()
-        if (isAutonomous()) {
-            internalRobot.autonomousInit()
-        } else {
-            internalRobot.teleOpInit()
-        }
+//        internalRobot.init()
+//        if (isAutonomous()) {
+//            internalRobot.autonomousInit()
+//        } else {
+//            internalRobot.teleOpInit()
+//        }
     }
-
     /**
      * This method runs the commandScheduler and subsystemManager during init and run.
      * If any other infrastructure gets written, it should be called inside here.
      */
     private fun runInfrastructure() {
-        bindings.update(gamepad1, gamepad2)
-        internalRobot.update()
-
+       // internalRobot.update()
         commandScheduler.run()
         subsystemManager.run()
         updatableManager.run()
-
         hubManager.clearCache()
     }
 
     private fun stopInfrastructure() {
         // This clears all the devices, unless the opMode throws an exception.
         // I haven't yet found a way to clear them in that scenario.
-        deviceManager.clear()
-
         // This clears all the subsystems, unless the opMode throws an exception.
         // I haven't yet found a way to clear them in that scenario.
-        subsystemManager.clear()
-
         updatableManager.clear()
-
         commandScheduler.reset()
     }
 
@@ -320,10 +308,11 @@ abstract class BrickOpMode: LinearOpMode() {
         checkAnnotationsMakeSense()
 
         bindings = bindingsAnnotation!!.bindings.java.getDeclaredConstructor().newInstance()
-        localizer = localizerAnnotation!!.localizer.java.getDeclaredConstructor().newInstance()
+        //FIXME: Null pointer Exception
+//        localizer = localizerAnnotation!!.localizer.java.getDeclaredConstructor().newInstance()
 
         // FIXME: This definitely creates a duplicate separate instance. Needs fixing.
-        internalRobot = robotAnnotation!!.robot.java.getDeclaredConstructor().newInstance()
+//        internalRobot = robotAnnotation!!.robot.java.getDeclaredConstructor().newInstance()
 
         handleFilename()
     }
