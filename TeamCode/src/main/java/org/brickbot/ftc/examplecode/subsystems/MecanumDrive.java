@@ -1,16 +1,15 @@
 package org.brickbot.ftc.examplecode.subsystems;
-
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-
 import org.brickbot.ftc.examplecode.RobotHardware;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.jetbrains.annotations.NotNull;
-
+import org.brickbot.ftc.examplecode.Constants;
 import brickbot.quickstart.controlalgorithms.PDFSController;
 import brickbot.quickstart.devices.BrickMotor;
 import brickbot.quickstart.subsystems.Subsystem;
@@ -18,10 +17,10 @@ import brickbot.quickstart.subsystems.Subsystem;
 public class MecanumDrive extends Subsystem {
     private RobotHardware robot;
 
-    private BrickMotor frontLeft;
-    private BrickMotor frontRight;
-    private BrickMotor rearLeft;
-    private BrickMotor rearRight;
+    public BrickMotor frontLeft;
+    public BrickMotor frontRight;
+    public BrickMotor rearLeft;
+    public BrickMotor rearRight;
 
     private GoBildaPinpointDriver pinpoint;
 
@@ -35,13 +34,16 @@ public class MecanumDrive extends Subsystem {
     private double currHeading;
     private double targetHeading;
 
+    private double headingVelocity;
+    public static double kHeadingPrediction = 0.2;
+
     private double brake;
 
-    public static double kP;
-    public static double kD;
-    public static double kF;
-    public static double kS;
-    public static double kStatic;
+    public static double kP =  Constants.MecanumDriveConstants.kP;
+    public static double kD = Constants.MecanumDriveConstants.kD;
+    public static double kF = Constants.MecanumDriveConstants.kF;
+    public static double kS = Constants.MecanumDriveConstants.kS;
+    public static double kStatic = Constants.MecanumDriveConstants.kStatic;
 
     public PDFSController headingController;
 
@@ -58,7 +60,7 @@ public class MecanumDrive extends Subsystem {
 
         brake = 1.0;
 
-        kP = 0.0001;
+        kP = 0.0005;
         kD = 0.0;
         kF = 0.0;
         kS = 0.0;
@@ -82,28 +84,12 @@ public class MecanumDrive extends Subsystem {
     private DcMotor.ZeroPowerBehavior zeroPowerBehavior = DcMotor.ZeroPowerBehavior.BRAKE;
     private boolean isLocalizationEnabled = false;
 
-    public MecanumDrive setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
-        this.zeroPowerBehavior = zeroPowerBehavior;
-
-        return this;
-    }
-
-    public MecanumDrive setHeadingPDFS(double kP, double kD, double kF, double kS) {
-        this.kP = kP;
-        this.kD = kD;
-        this.kF = kF;
-        this.kS = kS;
-
-        headingController = new PDFSController(kP, kD, kF, kS).setErrorThreshold(1.0);
-
-        return this;
-    }
-
     @Override
     public void init(@NotNull HardwareMap hwMap) {
         robot = RobotHardware.getInstance();
 
         pinpoint = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH,0.0, 0.0, AngleUnit.RADIANS, 0.0));
 
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -132,11 +118,12 @@ public class MecanumDrive extends Subsystem {
             currHeading = AngleUnit.normalizeRadians(imuHeading);
         } else {
             Pose2D currPose = pinpoint.getPosition();
-
             x = currPose.getX(DistanceUnit.INCH);
-            y = currPose.getX(DistanceUnit.INCH);
+            y = currPose.getY(DistanceUnit.INCH);
             currHeading = AngleUnit.normalizeRadians(currPose.getHeading(AngleUnit.RADIANS));
         }
+
+        headingVelocity = pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS);
 
         xInput = robot.gamepad1.left_stick_x * (1 - kStatic) + Math.signum(robot.gamepad1.left_stick_x) * kStatic;
         yInput = -robot.gamepad1.left_stick_y * (1 - kStatic) + Math.signum(-robot.gamepad1.left_stick_y) * kStatic;
@@ -150,13 +137,14 @@ public class MecanumDrive extends Subsystem {
 
         if (RobotHardware.getInstance().gamepad1.optionsWasPressed()) {
             pinpoint.setHeading(Math.PI, AngleUnit.RADIANS);
+            targetHeading = Math.PI;
         }
     }
 
     @Override
     public void compute() {
-        if (Double.compare(turnInput, 0.0) == 0 && Double.compare(lastTurnInput, 0.0) != 0) {
-            targetHeading = currHeading;
+        if (Math.abs(turnInput) < 0.03 && Math.abs(lastTurnInput) > 0.03) {
+            targetHeading = AngleUnit.normalizeRadians(currHeading + (headingVelocity * kHeadingPrediction));
         }
         lastTurnInput = turnInput;
 
@@ -168,8 +156,11 @@ public class MecanumDrive extends Subsystem {
             yInput = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
         }
 
-        if (Double.compare(turnInput, 0.0) == 0) {
-            turnInput = headingController.compute(Math.toDegrees(currHeading), Math.toDegrees(targetHeading));
+        if (Math.abs(turnInput) < 0.03) {
+            double headingErrorDeg = Math.toDegrees(AngleUnit.normalizeRadians(targetHeading - currHeading));
+            double correction = headingController.compute(Math.toDegrees(currHeading), Math.toDegrees(currHeading) + headingErrorDeg);
+
+            turnInput = (Math.abs(headingErrorDeg) < 1.0) ? 0.0 : correction;
         }
     }
 
@@ -204,5 +195,34 @@ public class MecanumDrive extends Subsystem {
         this.isLocalizationEnabled = isLocalizationEnabled;
 
         return this;
+    }
+
+    public MecanumDrive setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
+        this.zeroPowerBehavior = zeroPowerBehavior;
+
+        return this;
+    }
+
+    public MecanumDrive setHeadingPDFS(double kP, double kD, double kF, double kS) {
+        this.kP = kP;
+        this.kD = kD;
+        this.kF = kF;
+        this.kS = kS;
+
+        headingController = new PDFSController(kP, kD, kF, kS).setErrorThreshold(1.0);
+
+        return this;
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getHeading() {
+        return currHeading;
     }
 }

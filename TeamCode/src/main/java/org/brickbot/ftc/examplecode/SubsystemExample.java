@@ -1,13 +1,9 @@
-package org.brickbot.ftc.examplecode;
+package org.brickbot.ftc.examplecode.subsystems;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.jetbrains.annotations.NotNull;
 
-import brickbot.quickstart.devices.BrickCRServo;
-import brickbot.quickstart.devices.BrickEncoder;
-import brickbot.quickstart.devices.BrickMotor;
-import brickbot.quickstart.devices.BrickServo;
 import brickbot.quickstart.subsystems.Subsystem;
 
 public class SubsystemExample extends Subsystem {

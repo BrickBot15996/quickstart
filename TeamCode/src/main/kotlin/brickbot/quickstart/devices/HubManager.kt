@@ -12,7 +12,6 @@ object HubManager {
     fun init(hardwareMap: HardwareMap) {
         try {
             val modules = hardwareMap.getAll(LynxModule::class.java)
-
             // Strategy 1: Find module where isParent() is true (Control Hub is always the parent module)
             // Strategy 2: Fallback to searching deviceName or taking the first available module
             controlHub = modules.firstOrNull { it.isParent }

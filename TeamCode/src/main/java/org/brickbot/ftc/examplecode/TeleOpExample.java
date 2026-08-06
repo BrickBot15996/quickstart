@@ -1,7 +1,12 @@
-package org.brickbot.ftc.examplecode;
+package org.brickbot.ftc.examplecode.teleop;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.bylazar.field.Style;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.Vector;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
+import org.brickbot.ftc.examplecode.RobotHardware;
+import org.brickbot.ftc.examplecode.TeleOpBindings;
 
 import brickbot.quickstart.opmode.BrickOpMode;
 
@@ -34,6 +39,7 @@ public class TeleOpExample extends BrickOpMode {
     public void run() {
 
     }
+
 }
 
 

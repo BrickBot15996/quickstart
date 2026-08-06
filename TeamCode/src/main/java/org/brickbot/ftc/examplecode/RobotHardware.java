@@ -22,7 +22,7 @@ public class RobotHardware extends Robot {
         mecanumDrive = new MecanumDrive()
                 .setDrivingMode(MecanumDrive.DrivingMode.FIELD_CENTRIC)
                 .setSteeringBindings(MecanumDrive.SteeringBindings.RIGHT_STICK)
-                .setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT)
+                .setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE)
                 .setIsLocalizationEnabled(false);
     }
 
