@@ -32,14 +32,13 @@ import java.io.InputStreamReader
  * 1. `@TeleOp` - Marks this OpMode as TeleOp and makes it show up in the TeleOp list on the driver station.
  * 2. `@Autonomous` - Marks this OpMode as Autonomous and makes it show up in the Autonomous list on the driver station.
  * 3. `@Disabled` - Hides this OpMode on the driver station.
- * 4. `@Robot` - Accepts your robot class so the OpMode can call the `init()` and `update()` methods;
- * 5. `@Bindings` - Accepts your bindings class so the OpMode can call the `update()` method with
+ * 4. `@Bindings` - Accepts your bindings class so the OpMode can call the `update()` method with
  * the gamepads as parameters.
- * 6. `@Localizer` - Accepts your localizer instance so the OpMode can track the position of your robot,
+ * 5. `@Localizer` - Accepts your localizer instance so the OpMode can track the position of your robot,
  * generally used for `@Recording` or `@Playback` OpModes.
- * 7. `@Recording` - Marks this OpMode as Recording, giving you the functionality to save a 30-second
+ * 6. `@Recording` - Marks this OpMode as Recording, giving you the functionality to save a 30-second
  * sequence of robot and gamepad states to a file so they can be replayed.
- * 8. `@Playback` - Marks this OpMode as Playback, allowing you to play a previous recording of a
+ * 7. `@Playback` - Marks this OpMode as Playback, allowing you to play a previous recording of a
  * 30-second TeleOp sequence.
  *
  * There are 4 available functions at your disposal to override:
@@ -76,7 +75,6 @@ import java.io.InputStreamReader
  *
  * @see TeleOp
  * @see Autonomous
- * @see brickbot.quickstart.opmode.annotations.Robot
  * @see brickbot.quickstart.opmode.annotations.Bindings
  * @see brickbot.quickstart.opmode.annotations.Localizer
  * @see brickbot.quickstart.opmode.annotations.Recording
@@ -123,7 +121,6 @@ abstract class BrickOpMode: LinearOpMode() {
     private var recordingAnnotation: brickbot.quickstart.opmode.annotations.Recording? = null
     private var playbackAnnotation: brickbot.quickstart.opmode.annotations.Playback? = null
     private var bindingsAnnotation: brickbot.quickstart.opmode.annotations.Bindings? = null
-    private var robotAnnotation: brickbot.quickstart.opmode.annotations.Robot? = null
     private var localizerAnnotation: brickbot.quickstart.opmode.annotations.Localizer? = null
 
     /**
@@ -234,12 +231,15 @@ abstract class BrickOpMode: LinearOpMode() {
 
             runInfrastructure()
             bindings.update(gamepad1, gamepad2)
+
             loopFrequency = ++loopCount / ((System.nanoTime() - opModeStartTimestamp) * 1e-9)
-            telemetry.addData("Loop frequency:", "%ldHz", loopFrequency)
+            telemetry.addData("Loop frequency:", "%fHz", loopFrequency)
 
             if (isRecordingOpMode() && ::lastSavedFile.isInitialized) {
                 telemetry.addData("Last recording saved in: ", lastSavedFile)
             }
+
+            telemetry.update()
         }
 
         stopInfrastructure()
@@ -250,6 +250,9 @@ abstract class BrickOpMode: LinearOpMode() {
 
         // This calls the init methods automatically for all devices
         deviceManager.initDevices(hardwareMap)
+
+        // This calls the init methods automatically for all subsystems
+        subsystemManager.init(hardwareMap)
 
         // This grabs the hubs from the hardware map
         hubManager.init(hardwareMap)
@@ -275,10 +278,6 @@ abstract class BrickOpMode: LinearOpMode() {
     }
 
     private fun stopInfrastructure() {
-        // This clears all the devices, unless the opMode throws an exception.
-        // I haven't yet found a way to clear them in that scenario.
-        // This clears all the subsystems, unless the opMode throws an exception.
-        // I haven't yet found a way to clear them in that scenario.
         updatableManager.clear()
         commandScheduler.reset()
     }
@@ -298,9 +297,6 @@ abstract class BrickOpMode: LinearOpMode() {
         bindingsAnnotation = this.javaClass.getAnnotation(
             brickbot.quickstart.opmode.annotations.Bindings::class.java
         )
-        robotAnnotation = this.javaClass.getAnnotation(
-            brickbot.quickstart.opmode.annotations.Robot::class.java
-        )
         localizerAnnotation = this.javaClass.getAnnotation(
             brickbot.quickstart.opmode.annotations.Localizer::class.java
         )
@@ -311,8 +307,6 @@ abstract class BrickOpMode: LinearOpMode() {
         //FIXME: Null pointer Exception
 //        localizer = localizerAnnotation!!.localizer.java.getDeclaredConstructor().newInstance()
 
-        // FIXME: This definitely creates a duplicate separate instance. Needs fixing.
-//        internalRobot = robotAnnotation!!.robot.java.getDeclaredConstructor().newInstance()
 
         handleFilename()
     }
@@ -336,12 +330,6 @@ abstract class BrickOpMode: LinearOpMode() {
     }
 
     private fun checkAnnotationsMakeSense() {
-        // FIXME: Add this restriction back after validating the behaviour of submitting a robot
-        //        regarding the concern raised at its declaration above
-//        if (!submittedRobot()) {
-//            throw RuntimeException("You need to add an @Robot annotation that contains the Robot instance.")
-//        }
-
         if (isAutonomous()) {
             if (isRecordingOpMode()) {
                 throw RuntimeException("An Autonomous cannot be an @Recording annotated OpMode.")
@@ -476,10 +464,6 @@ abstract class BrickOpMode: LinearOpMode() {
 
     private fun submittedBindings(): Boolean {
         return bindingsAnnotation != null
-    }
-
-    private fun submittedRobot(): Boolean {
-        return robotAnnotation != null
     }
 
     private fun submittedLocalizer(): Boolean {

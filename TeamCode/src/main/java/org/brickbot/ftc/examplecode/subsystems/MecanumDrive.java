@@ -1,112 +1,208 @@
 package org.brickbot.ftc.examplecode.subsystems;
+
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import org.brickbot.ftc.examplecode.RobotHardware;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.jetbrains.annotations.NotNull;
 
 import brickbot.quickstart.controlalgorithms.PDFSController;
+import brickbot.quickstart.devices.BrickMotor;
 import brickbot.quickstart.subsystems.Subsystem;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 public class MecanumDrive extends Subsystem {
-private RobotHardware robot = RobotHardware.getInstance();
+    private RobotHardware robot;
 
+    private BrickMotor frontLeft;
+    private BrickMotor frontRight;
+    private BrickMotor rearLeft;
+    private BrickMotor rearRight;
 
-        private double x;
-        private double y;
-        private double turn;
-        private double lastTurn;
-        private double headingOffset = Math.PI / 2.0; //TODO GRAB FROM AUTONOMOUS
-        private double currHeading = 0;
-        private double targetHeading;
-        private double brake = 1.0;
-        private double kStatic = 0.0;
-        public  static  double kP = 0, kD = 0, kF = 0, kS = 0;
+    private GoBildaPinpointDriver pinpoint;
 
-        public FieldCentricDrive() {}
-        public FieldCentricDrive setHeadingPDFS(double kP, double kD, double kF, double kStatic) {
-            headingController = new PDFSController(kP, kD, kF, kStatic).setFeedForwardType(PDFSController.FeedForwardType.CONSTANT).setDeadzone(1).sethomedConstant(0);
-            return this;
+    private double xInput;
+    private double yInput;
+    private double turnInput;
+    private double lastTurnInput;
+
+    private double x;
+    private double y;
+    private double currHeading;
+    private double targetHeading;
+
+    private double brake;
+
+    public static double kP;
+    public static double kD;
+    public static double kF;
+    public static double kS;
+    public static double kStatic;
+
+    public PDFSController headingController;
+
+    public MecanumDrive() {
+        frontLeft = new BrickMotor("frontLeft");
+        frontRight = new BrickMotor("frontRight");
+        rearLeft = new BrickMotor("rearLeft");
+        rearRight = new BrickMotor("rearRight");
+
+        xInput = 0.0;
+        yInput = 0.0;
+        turnInput = 0.0;
+        lastTurnInput = 0.0;
+
+        brake = 1.0;
+
+        kP = 0.0001;
+        kD = 0.0;
+        kF = 0.0;
+        kS = 0.0;
+        kStatic = 0.0;
+
+        headingController = new PDFSController(kP, kD, kF, kS).setErrorThreshold(1.0);
+    }
+
+    public enum SteeringBindings {
+        RIGHT_STICK,
+        TRIGGERS
+    }
+
+    public enum DrivingMode {
+        FIELD_CENTRIC,
+        ROBOT_CENTRIC
+    }
+
+    private SteeringBindings steeringBindings = SteeringBindings.RIGHT_STICK;
+    private DrivingMode drivingMode = DrivingMode.FIELD_CENTRIC;
+    private DcMotor.ZeroPowerBehavior zeroPowerBehavior = DcMotor.ZeroPowerBehavior.BRAKE;
+    private boolean isLocalizationEnabled = false;
+
+    public MecanumDrive setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
+        this.zeroPowerBehavior = zeroPowerBehavior;
+
+        return this;
+    }
+
+    public MecanumDrive setHeadingPDFS(double kP, double kD, double kF, double kS) {
+        this.kP = kP;
+        this.kD = kD;
+        this.kF = kF;
+        this.kS = kS;
+
+        headingController = new PDFSController(kP, kD, kF, kS).setErrorThreshold(1.0);
+
+        return this;
+    }
+
+    @Override
+    public void init(@NotNull HardwareMap hwMap) {
+        robot = RobotHardware.getInstance();
+
+        pinpoint = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rearLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rearRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
+        rearLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        rearRight.setDirection(DcMotorSimple.Direction.FORWARD);
+
+        frontLeft.setZeroPowerBehavior(zeroPowerBehavior);
+        frontRight.setZeroPowerBehavior(zeroPowerBehavior);
+        rearLeft.setZeroPowerBehavior(zeroPowerBehavior);
+        rearRight.setZeroPowerBehavior(zeroPowerBehavior);
+    }
+
+    @Override
+    public void read() {
+        pinpoint.update();
+
+        headingController.setConstants(kP, kD, kF, kS);
+
+        if (!isLocalizationEnabled) {
+            double imuHeading = pinpoint.getHeading(AngleUnit.RADIANS);
+            currHeading = AngleUnit.normalizeRadians(imuHeading);
+        } else {
+            Pose2D currPose = pinpoint.getPosition();
+
+            x = currPose.getX(DistanceUnit.INCH);
+            y = currPose.getX(DistanceUnit.INCH);
+            currHeading = AngleUnit.normalizeRadians(currPose.getHeading(AngleUnit.RADIANS));
         }
-        @Override
-        public void read() {
-            robot.pinpoint.update();
-            headingController.updateConstants(kP, kD, kF, kS);
-            double imuHeading = robot.pinpoint.getHeading();
 
-            currHeading = AngleUnit.normalizeRadians(imuHeading + headingOffset);
+        xInput = robot.gamepad1.left_stick_x * (1 - kStatic) + Math.signum(robot.gamepad1.left_stick_x) * kStatic;
+        yInput = -robot.gamepad1.left_stick_y * (1 - kStatic) + Math.signum(-robot.gamepad1.left_stick_y) * kStatic;
 
-            x = robot.gamepad1.left_stick_x * (1 - kStatic);
-            x = Math.abs(x) > 0.03 ? x + Math.signum(x) * kStatic : 0.0;
-
-            y = -robot.gamepad1.left_stick_y * (1 - kStatic);
-            y = Math.abs(y) > 0.03 ? y + Math.signum(y) * kStatic : 0.0;
-
-            turn = - (robot.gamepad1.right_stick_x) * (1 - kStatic);
-            turn = Math.abs(turn) > 0.03 ? turn + Math.signum(turn) * kStatic : 0.0;
-
-            if(robot.slides.getExtensionCm() > 50)
-                brake = 0.7;
-            else if (robot.gamepad1.right_trigger > 0 || robot.slides.getExtensionCm() > 20)
-                brake = 0.5;
-            else
-                brake = 1.0;
-
-            if (robot.gamepad1.options)
-                headingOffset = -imuHeading;
+        if (steeringBindings == SteeringBindings.TRIGGERS) {
+            double turnValue = robot.gamepad1.right_trigger - robot.gamepad1.left_trigger;
+            turnInput = turnValue * (1 - kStatic) + Math.signum(turnValue) * kStatic;
+        } else {
+            turnInput = robot.gamepad1.right_stick_x * (1 - kStatic) + Math.signum(robot.gamepad1.right_stick_x) * kStatic;
         }
 
-        @Override
-        public void periodic() {
-            if (Double.compare(turn, 0.0) == 0 && Double.compare(lastTurn, 0.0) != 0) {
-                targetHeading = currHeading;
-            }
-            lastTurn = turn;
+        if (RobotHardware.getInstance().gamepad1.optionsWasPressed()) {
+            pinpoint.setHeading(Math.PI, AngleUnit.RADIANS);
+        }
+    }
 
-            double xCopy = x;
-            double yCopy = y;
+    @Override
+    public void compute() {
+        if (Double.compare(turnInput, 0.0) == 0 && Double.compare(lastTurnInput, 0.0) != 0) {
+            targetHeading = currHeading;
+        }
+        lastTurnInput = turnInput;
 
-            x = xCopy * Math.cos(-currHeading) - yCopy * Math.sin(-currHeading);
-            y = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
+        if (drivingMode == DrivingMode.FIELD_CENTRIC) {
+            double xCopy = xInput;
+            double yCopy = yInput;
 
-        /*if (Double.compare(turn, 0.0) == 0)
-            turn = headingController.run(Math.toDegrees(currHeading), Math.toDegrees(targetHeading), 90);*/
+            xInput = xCopy * Math.cos(-currHeading) - yCopy * Math.sin(-currHeading);
+            yInput = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
         }
 
-        @Override
-        public void write() {
-            double voltageCorrection = 12.0 / robot.voltage;
-            double denominator = Math.max((Math.abs(y) + Math.abs(x) + Math.abs(turn)) * voltageCorrection, 1.0);
-            double frontLeftPower = (-y + x - turn) * voltageCorrection / denominator;
-            double rearLeftPower = (y + x - turn) * voltageCorrection / denominator;
-            double rearRightPower = (-y + x + turn) * voltageCorrection / denominator;
-            double frontRightPower = (y + x + turn) * voltageCorrection / denominator;
+        if (Double.compare(turnInput, 0.0) == 0) {
+            turnInput = headingController.compute(Math.toDegrees(currHeading), Math.toDegrees(targetHeading));
+        }
+    }
 
-            robot.frontLeft.setPower(frontLeftPower * brake);
-            robot.rearLeft.setPower(rearLeftPower * brake);
-            robot.rearRight.setPower(rearRightPower * brake);
-            robot.frontRight.setPower(frontRightPower * brake);
-        }
+    @Override
+    public void write() {
+        double denominator = Math.max((Math.abs(xInput) + Math.abs(yInput) + Math.abs(turnInput)), 1.0);
 
-        @Override
-        public void init(HardwareMap hwMap) {
-            robot.frontLeft.init(hwMap);
-            robot.rearLeft.init(hwMap);
-            robot.rearRight.init(hwMap);
-            robot.frontRight.init(hwMap);
-            robot.frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            robot.rearLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            robot.rearRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            robot.frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            robot.frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-            robot.rearLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-            robot.rearRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-            robot.frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-            robot.frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-            robot.rearLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        }
-        public double getHeading()
-        {
-            return currHeading;
-        }
+        double frontLeftPower = (xInput - yInput - turnInput) / denominator;
+        double rearLeftPower = (xInput + yInput - turnInput) / denominator;
+        double rearRightPower = (xInput - yInput + turnInput) / denominator;
+        double frontRightPower = (xInput + yInput + turnInput) / denominator;
+
+        frontLeft.setPower(frontLeftPower);
+        rearLeft.setPower(rearLeftPower);
+        rearRight.setPower(rearRightPower);
+        frontRight.setPower(frontRightPower);
+    }
+
+    public MecanumDrive setSteeringBindings(SteeringBindings steeringBindings) {
+        this.steeringBindings = steeringBindings;
+
+        return this;
+    }
+
+    public MecanumDrive setDrivingMode(DrivingMode drivingMode) {
+        this.drivingMode = drivingMode;
+
+        return this;
+    }
+
+    public MecanumDrive setIsLocalizationEnabled(boolean isLocalizationEnabled) {
+        this.isLocalizationEnabled = isLocalizationEnabled;
+
+        return this;
     }
 }

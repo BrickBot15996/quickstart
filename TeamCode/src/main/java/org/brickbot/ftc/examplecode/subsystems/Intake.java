@@ -1,11 +1,20 @@
 package org.brickbot.ftc.examplecode.subsystems;
+
 import com.qualcomm.robotcore.hardware.HardwareMap;
+
+import org.brickbot.ftc.examplecode.RobotHardware;
 import org.jetbrains.annotations.NotNull;
 import brickbot.quickstart.devices.BrickMotor;
 import brickbot.quickstart.subsystems.Subsystem;
 
 public class Intake extends Subsystem {
-    private BrickMotor intakeMotor = new BrickMotor("intakeMotor");
+    private RobotHardware robot;
+    private BrickMotor intakeMotor;
+
+    public Intake() {
+        intakeMotor = new BrickMotor("intakeMotor");
+    }
+
     public enum IntakeState {
         ON(1.0),
         OFF(0.0);
@@ -22,6 +31,7 @@ public class Intake extends Subsystem {
 
     @Override
     public void init(@NotNull HardwareMap hwMap) {
+        robot = RobotHardware.getInstance();
         System.out.println("intake init");
     }
 

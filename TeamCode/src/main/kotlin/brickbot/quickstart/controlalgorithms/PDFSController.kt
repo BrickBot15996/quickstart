@@ -13,9 +13,13 @@ class PDFSController(
     var kStatic: Double
 ) {
     var feedforwardMultiplier = 1.0
+        private set
     var minPosition = Double.MIN_VALUE
+        private set
     var maxPosition = Double.MAX_VALUE
+        private set
     var errorThreshold = 50.0
+        private set
 
     private var lastPosition = 0.0
     private var target = 0.0
@@ -71,12 +75,12 @@ class PDFSController(
         return this
     }
 
-    fun calculate(currentPosition: Double, targetPosition: Double): Double {
+    fun compute(currentPosition: Double, targetPosition: Double): Double {
         target = targetPosition
-        return calculate(currentPosition)
+        return compute(currentPosition)
     }
 
-    fun calculate(currentPosition: Double): Double {
+    fun compute(currentPosition: Double): Double {
         val error = target - currentPosition
         val currentVelocity = (lastPosition - currentPosition) / timer.seconds()
         lastPosition = currentPosition

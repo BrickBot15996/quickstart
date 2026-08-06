@@ -136,9 +136,9 @@ class Follower(
         val posY = pinpointLocalizer.getY()
         val botHeading = pinpointLocalizer.getHeading()
 
-        val x = xPDFS.calculate(posX, targetPose.x)
-        val y = yPDFS.calculate(posY, targetPose.y)
-        val rx = headingPDFS.calculate(pinpointLocalizer.getHeading(), targetPose.heading)
+        val x = xPDFS.compute(posX, targetPose.x)
+        val y = yPDFS.compute(posY, targetPose.y)
+        val rx = headingPDFS.compute(pinpointLocalizer.getHeading(), targetPose.heading)
 
         val rotX = x * cos(-botHeading) - y * sin(-botHeading)
         val rotY = x * sin(-botHeading) + y * cos(-botHeading)
