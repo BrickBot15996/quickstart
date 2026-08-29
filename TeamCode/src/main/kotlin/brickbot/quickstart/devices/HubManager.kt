@@ -2,10 +2,14 @@ package brickbot.quickstart.devices
 
 import com.qualcomm.hardware.lynx.LynxModule
 import com.qualcomm.robotcore.hardware.HardwareMap
+import org.firstinspires.ftc.robotcore.external.navigation.VoltageUnit
+import java.util.function.DoubleSupplier
 
 object HubManager {
     private lateinit var controlHub: LynxModule
     private lateinit var expansionHub: LynxModule
+
+    public lateinit var voltage: DoubleSupplier
 
     private var isExpansionHubCachingEnabled = true
 
@@ -27,6 +31,8 @@ object HubManager {
                 "Failed to initialize Control Hub LynxModule: ${e.message}", e
             )
         }
+
+        voltage = DoubleSupplier { controlHub.getInputVoltage(VoltageUnit.VOLTS) }
 
         try {
             // Pull the first appearance of an Expansion Hub cause realistically there should not be
@@ -62,5 +68,9 @@ object HubManager {
         if (isExpansionHubCachingEnabled) {
             expansionHub.clearBulkCache()
         }
+    }
+
+    fun update() {
+
     }
 }

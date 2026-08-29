@@ -3,6 +3,8 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import org.brickbot.ftc.examplecode.RobotHardware;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -12,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.brickbot.ftc.examplecode.Constants;
 import brickbot.quickstart.controlalgorithms.PDFSController;
 import brickbot.quickstart.devices.BrickMotor;
+import brickbot.quickstart.devices.HubManager;
 import brickbot.quickstart.subsystems.Subsystem;
 
 public class MecanumDrive extends Subsystem {
@@ -29,15 +32,27 @@ public class MecanumDrive extends Subsystem {
     private double turnInput;
     private double lastTurnInput;
 
-    private double x;
-    private double y;
+    private boolean manualSteering;
+
+    private double xVector;
+    private double yVector;
+    private double turnVector;
+
+    private double xPos;
+    private double yPos;
     private double currHeading;
+    private double lastHeading;
     private double targetHeading;
+
+    private ElapsedTime headingTimer;
 
     private double headingVelocity;
     public static double kHeadingPrediction = 0.2;
 
     private double brake;
+
+    private double voltage;
+    private double voltageCompensationTarget;
 
     public static double kP =  Constants.MecanumDriveConstants.kP;
     public static double kD = Constants.MecanumDriveConstants.kD;
@@ -58,6 +73,15 @@ public class MecanumDrive extends Subsystem {
         turnInput = 0.0;
         lastTurnInput = 0.0;
 
+        manualSteering = false;
+
+        xVector = 0.0;
+        yVector = 0.0;
+        turnVector = 0.0;
+
+        lastHeading = Double.MIN_VALUE;
+        headingTimer = new ElapsedTime();
+
         brake = 1.0;
 
         kP = 0.0005;
@@ -67,6 +91,9 @@ public class MecanumDrive extends Subsystem {
         kStatic = 0.0;
 
         headingController = new PDFSController(kP, kD, kF, kS).setErrorThreshold(1.0);
+
+        voltage = 12.0;
+        voltageCompensationTarget = 12.0;
     }
 
     public enum SteeringBindings {
@@ -114,64 +141,81 @@ public class MecanumDrive extends Subsystem {
         headingController.setConstants(kP, kD, kF, kS);
 
         if (!isLocalizationEnabled) {
-            double imuHeading = pinpoint.getHeading(AngleUnit.RADIANS);
-            currHeading = AngleUnit.normalizeRadians(imuHeading);
+            currHeading = AngleUnit.normalizeRadians(
+                    pinpoint.getHeading(AngleUnit.RADIANS)
+            );
         } else {
             Pose2D currPose = pinpoint.getPosition();
-            x = currPose.getX(DistanceUnit.INCH);
-            y = currPose.getY(DistanceUnit.INCH);
-            currHeading = AngleUnit.normalizeRadians(currPose.getHeading(AngleUnit.RADIANS));
+            xPos = currPose.getX(DistanceUnit.INCH);
+            yPos = currPose.getY(DistanceUnit.INCH);
+            currHeading = AngleUnit.normalizeRadians(
+                    currPose.getHeading(AngleUnit.RADIANS)
+            );
         }
 
-        headingVelocity = pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS);
+        headingVelocity = (lastHeading - currHeading) / headingTimer.seconds();
+        headingTimer.reset();
 
-        xInput = robot.gamepad1.left_stick_x * (1 - kStatic) + Math.signum(robot.gamepad1.left_stick_x) * kStatic;
-        yInput = -robot.gamepad1.left_stick_y * (1 - kStatic) + Math.signum(-robot.gamepad1.left_stick_y) * kStatic;
+        if (lastHeading == Double.MIN_VALUE) {
+            headingVelocity = 0.0;
+        }
+
+        lastHeading = currHeading;
+
+        xInput = robot.gamepad1.left_stick_x;
+        yInput = -robot.gamepad1.left_stick_y;
 
         if (steeringBindings == SteeringBindings.TRIGGERS) {
-            double turnValue = robot.gamepad1.right_trigger - robot.gamepad1.left_trigger;
-            turnInput = turnValue * (1 - kStatic) + Math.signum(turnValue) * kStatic;
+            turnInput = robot.gamepad1.right_trigger - robot.gamepad1.left_trigger;
         } else {
-            turnInput = robot.gamepad1.right_stick_x * (1 - kStatic) + Math.signum(robot.gamepad1.right_stick_x) * kStatic;
+            turnInput = robot.gamepad1.right_stick_x;
         }
 
-        if (RobotHardware.getInstance().gamepad1.optionsWasPressed()) {
-            pinpoint.setHeading(Math.PI, AngleUnit.RADIANS);
-            targetHeading = Math.PI;
+        if (turnInput != 0.0) {
+            manualSteering = true;
+        } else if (Math.abs(headingVelocity) < Math.toRadians(20) && manualSteering) {
+            manualSteering = false;
+            targetHeading = currHeading;
         }
+
+        lastTurnInput = turnInput;
     }
 
     @Override
     public void compute() {
-        if (Math.abs(turnInput) < 0.03 && Math.abs(lastTurnInput) > 0.03) {
-            targetHeading = AngleUnit.normalizeRadians(currHeading + (headingVelocity * kHeadingPrediction));
-        }
-        lastTurnInput = turnInput;
+        xVector = xInput * (1 - kStatic) + Math.signum(xInput) * kStatic;
+        yVector = yInput * (1 - kStatic) + Math.signum(yInput) * kStatic;
+        turnVector = turnInput * (1 - kStatic) + Math.signum(turnInput) * kStatic;
 
         if (drivingMode == DrivingMode.FIELD_CENTRIC) {
-            double xCopy = xInput;
-            double yCopy = yInput;
+            double xCopy = xVector;
+            double yCopy = yVector;
 
-            xInput = xCopy * Math.cos(-currHeading) - yCopy * Math.sin(-currHeading);
-            yInput = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
+            xVector = xCopy * Math.cos(-currHeading) - yCopy * Math.sin(-currHeading);
+            yVector = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
         }
 
         if (Math.abs(turnInput) < 0.03) {
-            double headingErrorDeg = Math.toDegrees(AngleUnit.normalizeRadians(targetHeading - currHeading));
-            double correction = headingController.compute(Math.toDegrees(currHeading), Math.toDegrees(currHeading) + headingErrorDeg);
+            if (!manualSteering) {
+                double delta = Math.atan2(
+                        Math.sin(targetHeading - currHeading),
+                        Math.cos(targetHeading - currHeading)
+                );
 
-            turnInput = (Math.abs(headingErrorDeg) < 1.0) ? 0.0 : correction;
+                turnVector = headingController.compute(0, Math.toDegrees(-delta));
+            }
         }
     }
 
     @Override
     public void write() {
-        double denominator = Math.max((Math.abs(xInput) + Math.abs(yInput) + Math.abs(turnInput)), 1.0);
+        double denominator = Math.max((Math.abs(xVector) + Math.abs(yVector) + Math.abs(turnVector)), 1.0);
+        voltage = HubManager.INSTANCE.getVoltage().getAsDouble();
 
-        double frontLeftPower = (xInput - yInput - turnInput) / denominator;
-        double rearLeftPower = (xInput + yInput - turnInput) / denominator;
-        double rearRightPower = (xInput - yInput + turnInput) / denominator;
-        double frontRightPower = (xInput + yInput + turnInput) / denominator;
+        double frontLeftPower = (xVector - yVector - turnVector) / denominator * (voltageCompensationTarget / voltage);
+        double rearLeftPower = (xVector + yVector - turnVector) / denominator * (voltageCompensationTarget / voltage);
+        double rearRightPower = (xVector - yVector + turnVector) / denominator * (voltageCompensationTarget / voltage);
+        double frontRightPower = (xVector + yVector + turnVector) / denominator * (voltageCompensationTarget / voltage);
 
         frontLeft.setPower(frontLeftPower);
         rearLeft.setPower(rearLeftPower);
@@ -214,15 +258,29 @@ public class MecanumDrive extends Subsystem {
         return this;
     }
 
-    public double getX() {
-        return x;
+    public double getXPos() {
+        return xPos;
     }
 
-    public double getY() {
-        return y;
+    public double getYPos() {
+        return yPos;
     }
 
     public double getHeading() {
         return currHeading;
+    }
+
+    public void setHeading(double heading, AngleUnit angleUnit) {
+        pinpoint.setHeading(heading, angleUnit);
+    }
+
+    public void setPosition(DistanceUnit distanceUnit, double x, double y, AngleUnit angleUnit, double heading) {
+        setPosition(new Pose2D(distanceUnit, x, y, angleUnit, heading));
+        targetHeading = heading;
+    }
+
+    public void setPosition(Pose2D pose2D) {
+        pinpoint.setPosition(pose2D);
+        targetHeading = pose2D.getHeading(AngleUnit.RADIANS);
     }
 }

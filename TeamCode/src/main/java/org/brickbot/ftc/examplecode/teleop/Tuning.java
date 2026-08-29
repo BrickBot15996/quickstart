@@ -11,7 +11,7 @@ import org.brickbot.ftc.examplecode.TeleOpBindings;
 
 import brickbot.quickstart.opmode.BrickOpMode;
 
-@TeleOp(name = "Tuning", group = "Development")
+@TeleOp(name = "BrickTuning", group = "Development")
 @brickbot.quickstart.opmode.annotations.Robot(robot = RobotHardware.class)
 @brickbot.quickstart.opmode.annotations.Bindings(bindings = TeleOpBindings.class)
 public class Tuning extends BrickOpMode {

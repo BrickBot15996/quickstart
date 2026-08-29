@@ -3,6 +3,7 @@ package org.brickbot.ftc.examplecode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.brickbot.ftc.examplecode.subsystems.Intake;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.jetbrains.annotations.NotNull;
 
 import brickbot.quickstart.recordautonomous.Bindings;
@@ -21,6 +22,10 @@ public class TeleOpBindings extends Bindings {
         }
         else {
             robot.intake.setIntakeState(Intake.IntakeState.OFF);
+        }
+
+        if (gamepad1.optionsWasPressed()) {
+            robot.mecanumDrive.setHeading(Math.PI, AngleUnit.RADIANS);
         }
     }
 

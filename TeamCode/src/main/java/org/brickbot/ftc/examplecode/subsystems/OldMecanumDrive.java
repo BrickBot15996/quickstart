@@ -1,121 +1,149 @@
-package org.brickbot.ftc.examplecode.subsystems;
-import androidx.annotation.NonNull;
-
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-import org.brickbot.ftc.examplecode.RobotHardware;
-
-import brickbot.quickstart.controlalgorithms.PDFSController;
-import brickbot.quickstart.devices.BrickMotor;
-import brickbot.quickstart.subsystems.Subsystem;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
-public class OldMecanumDrive extends Subsystem {
-    private RobotHardware robot = RobotHardware.getInstance();
-
-    private BrickMotor frontLeft = new BrickMotor("frontLeft");
-    private BrickMotor frontRight = new BrickMotor("frontRight");
-    private BrickMotor rearLeft = new BrickMotor("rearLeft");
-    private BrickMotor rearRight = new BrickMotor("rearRight");
-
-    private GoBildaPinpointDriver pinpoint;
-
-    private double x;
-    private double y;
-    private double turn;
-    private double lastTurn;
-    private double headingOffset = Math.PI / 2.0; //TODO GRAB FROM AUTONOMOUS
-    private double currHeading = 0;
-    private double targetHeading;
-    private double brake = 1.0;
-    private double kStatic = 0.0;
-    public static double kP = 0, kD = 0, kF = 0, kS = 0;
-    public PDFSController headingController = new PDFSController(0,0,0,0);
-
-    public OldMecanumDrive() { }
-
-    public OldMecanumDrive setHeadingPDFS(double kP, double kD, double kF, double kStatic) {
-        headingController = new PDFSController(kP, kD, kF, kStatic).setErrorThreshold(1.0);
-        return this;
-    }
-
-    @Override
-    public void init(@NonNull HardwareMap hwMap) {
-        System.out.println("Init robot");
-
-        pinpoint = hwMap.get(GoBildaPinpointDriver.class, "pinpoint");
-
-//        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-//        rearLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-//        rearRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-//        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//package org.firstinspires.ftc.teamcode.common.hardware.subsystems;
 //
-//        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//        rearLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//        rearRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//import com.acmerobotics.dashboard.config.Config;
+//import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+//import com.qualcomm.robotcore.hardware.HardwareMap;
+//import com.qualcomm.robotcore.hardware.IMU;
+//import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+//import com.qualcomm.robotcore.hardware.DcMotor;
+//import com.qualcomm.robotcore.hardware.DcMotorSimple;
+//import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+//import com.qualcomm.robotcore.util.ElapsedTime;
 //
-//        frontLeft.setDirection(DcMotor.Direction.REVERSE);
-//        frontRight.setDirection(DcMotor.Direction.REVERSE);
-//        rearLeft.setDirection(DcMotor.Direction.REVERSE);
-//        rearRight.setDirection(DcMotor.Direction.REVERSE);
-    }
-
-    @Override
-    public void read() {
-        pinpoint.update();
-        headingController.setConstants(kP, kD, kF, kS);
-        double imuHeading = pinpoint.getHeading(AngleUnit.RADIANS);
-
-        currHeading = AngleUnit.normalizeRadians(imuHeading + headingOffset);
-
-        x = RobotHardware.getInstance().gamepad1.left_stick_x * (1 - kStatic);
-        x = Math.abs(x) > 0.03 ? x + Math.signum(x) * kStatic : 0.0;
-
-        y = -RobotHardware.getInstance().gamepad1.left_stick_y * (1 - kStatic);
-        y = Math.abs(y) > 0.03 ? y + Math.signum(y) * kStatic : 0.0;
-
-        turn = - (RobotHardware.getInstance().gamepad1.right_stick_x) * (1 - kStatic);
-        turn = Math.abs(turn) > 0.03 ? turn + Math.signum(turn) * kStatic : 0.0;
-
-        if (RobotHardware.getInstance().gamepad1.options)
-            headingOffset = -imuHeading;
-    }
-
-    @Override
-    public void compute() {
-        if (Double.compare(turn, 0.0) == 0 && Double.compare(lastTurn, 0.0) != 0) {
-            targetHeading = currHeading;
-        }
-        lastTurn = turn;
-
-        double xCopy = x;
-        double yCopy = y;
-
-        x = xCopy * Math.cos(-currHeading) - yCopy * Math.sin(-currHeading);
-        y = xCopy * Math.sin(-currHeading) + yCopy * Math.cos(-currHeading);
-
-        if (Double.compare(turn, 0.0) == 0)
-            turn = headingController.compute(Math.toDegrees(currHeading), Math.toDegrees(targetHeading));
-    }
-
-    @Override
-    public void write() {
-        double voltageCorrection = 1;
-        double denominator = Math.max((Math.abs(y) + Math.abs(x) + Math.abs(turn)) * voltageCorrection, 1.0);
-        double frontLeftPower = (-y + x - turn) * voltageCorrection / denominator;
-        double rearLeftPower = (y + x - turn) * voltageCorrection / denominator;
-        double rearRightPower = (-y + x + turn) * voltageCorrection / denominator;
-        double frontRightPower = (y + x + turn) * voltageCorrection / denominator;
-
-        frontLeft.setPower(frontLeftPower * brake);
-        rearLeft.setPower(rearLeftPower * brake);
-        rearRight.setPower(rearRightPower * brake);
-        frontRight.setPower(frontRightPower * brake);
-    }
-
-    public double getHeading() {
-        return currHeading;
-    }
-}
-
+//import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+//import org.firstinspires.ftc.teamcode.common.controltheory.PDFSController;
+//import org.firstinspires.ftc.teamcode.common.controltheory.SimpleMath;
+//import org.firstinspires.ftc.teamcode.common.hardware.RobotHardware;
+//import org.opencv.core.Mat;
+//
+//import brickbot.quickstart.subsystems.Subsystem;
+//
+//@Config
+//public class OldMecanumDrive implements Subsystem {
+//
+//    RobotHardware robot = RobotHardware.getInstance();
+//    private double x;
+//    private double y;
+//    private double rotX;
+//    private double rotY;
+//    public double turn;
+//    private double lastTurn;
+//    public double headingOffset = Math.PI, headingVelocity = 0; //TODO GRAB FROM AUTONOMOUS
+//    public double botHeading = 0, lastHeading = 0;
+//    public double targetHeading = 0;
+//    private double brake = 1.0;
+//    public static double P = 0.023, D = 0.03, F = 0, S = 0;
+//    public static double P2 = 0.0085, D2 = 0.003, F2 = 0, S2 = 0;
+//    public boolean lock = true, headingManuallyControlled = true;
+//    PDFSController headingController = new PDFSController(P,D,F,S);
+//    PDFSController secondaryheadingController = new PDFSController(P2,D2,F2,S2);
+//    private final ElapsedTime headingTimer = new ElapsedTime();
+//    public FieldCentricV2() {}
+//
+//    @Override
+//    public void init(HardwareMap hwMap) {
+//        robot.frontLeft.init(hwMap);
+//        robot.rearLeft.init(hwMap);
+//        robot.rearRight.init(hwMap);
+//        robot.frontRight.init(hwMap);
+//        robot.frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//        robot.rearLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//        robot.rearRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//        robot.frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//        robot.frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        robot.rearLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        robot.rearRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        robot.frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        robot.frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+//        robot.rearLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+//        robot.imu.resetYaw();
+//    }
+//    @Override
+//    public void read() {
+//        headingController.setConstants(P, D, F, S);
+//        secondaryheadingController.setConstants(P2, D2, F2, S2);
+//        botHeading = robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + headingOffset;
+//        headingVelocity = (lastHeading - botHeading) / headingTimer.seconds();
+//        headingTimer.reset();
+//        lastHeading = botHeading;
+//        x = robot.gamepad1.left_stick_x;
+//        y = -robot.gamepad1.left_stick_y;
+//        turn =  (robot.gamepad1.right_stick_x);
+//        turn = SimpleMath.clamp(turn, -1, 1);
+//        if(robot.slides.getExtensionCm() > 35)
+//            brake = 0.37;
+//        else if (robot.gamepad1.right_trigger > 0)
+//            brake = 0.5;
+//        else if(robot.slides.getExtensionCm() > 20){
+//            brake = 0.65;
+//        }
+//        else
+//            brake = 1.0;
+//        if (robot.gamepad1.options) {
+//            robot.imu.resetYaw();
+//        }
+//    }
+//    public void write() {
+//        double voltageCorrection = 12.0 / robot.voltage;
+//        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(turn), 1);
+//        double frontLeftPower = (rotY + rotX + turn) * voltageCorrection/ denominator;
+//        double backLeftPower = (rotY - rotX + turn) * voltageCorrection/ denominator;
+//        double frontRightPower = (rotY - rotX - turn) * voltageCorrection/ denominator;
+//        double backRightPower = (rotY + rotX - turn) * voltageCorrection/ denominator;
+//
+//        if(!robot.agatat) {
+//            robot.frontLeft.setPower(frontLeftPower * brake);
+//            robot.rearLeft.setPower(backLeftPower * brake);
+//            robot.rearRight.setPower(backRightPower * brake);
+//            robot.frontRight.setPower(frontRightPower * brake);
+//        }
+//        else if(robot.agatat)
+//        {
+//            if(robot.gamepad2.cross)
+//            {
+//                robot.ridicat = true;
+//                robot.frontLeft.setPower(0.7);
+//                robot.frontRight.setPower(0.7);
+//                robot.rearLeft.setPower(0);
+//                robot.rearRight.setPower(0);
+//            }
+//            else if(robot.ridicat){
+//                robot.frontLeft.setPower(0.3);
+//                robot.frontRight.setPower(0.3);
+//                robot.rearLeft.setPower(0);
+//                robot.rearRight.setPower(0);
+//            }
+//        }
+//    }
+//    @Override
+//    public void periodic() {
+//
+//        // Rotate the movement direction counter to the bot's rotation
+//        rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+//        rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+//
+//        if (turn != 0) {
+//            headingManuallyControlled = true;
+//            //heading += K_STATIC*Math.signum(heading); //compensate for static friction for more precise control?
+//        } else if (lock) {
+//            if (Math.abs(headingVelocity) < Math.toRadians(20) && headingManuallyControlled) {
+//                headingManuallyControlled = false;
+//                targetHeading = botHeading;
+//            }
+//
+//            double delta = Math.atan2(
+//                    Math.sin(targetHeading - botHeading),
+//                    Math.cos(targetHeading - botHeading)
+//            );
+//
+//
+//            if(!headingManuallyControlled && Math.abs(Math.toDegrees(-delta)) > 30)
+//                turn = headingController.calculate(0, Math.toDegrees(-delta));
+//            else if(!headingManuallyControlled){
+//                turn = secondaryheadingController.calculate(0, Math.toDegrees(-delta));
+//            }
+//        }
+//
+//    }
+//}
+//
