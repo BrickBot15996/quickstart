@@ -233,7 +233,7 @@ abstract class BrickOpMode: LinearOpMode() {
             bindings.update(gamepad1, gamepad2)
 
             loopFrequency = ++loopCount / ((System.nanoTime() - opModeStartTimestamp) * 1e-9)
-            telemetry.addData("Loop frequency:", "%fHz", loopFrequency)
+            telemetry.addData("Loop frequency:",(""+ loopFrequency + "Hz"))
 
             if (isRecordingOpMode() && ::lastSavedFile.isInitialized) {
                 telemetry.addData("Last recording saved in: ", lastSavedFile)

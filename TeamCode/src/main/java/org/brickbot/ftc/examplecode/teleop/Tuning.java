@@ -36,6 +36,7 @@ public class Tuning extends BrickOpMode {
 
     @Override
     public void run() {
+        sleep(10);
        // drawRobot(robot.mecanumDrive.getX());
     }
     public static final double ROBOT_RADIUS = 9;

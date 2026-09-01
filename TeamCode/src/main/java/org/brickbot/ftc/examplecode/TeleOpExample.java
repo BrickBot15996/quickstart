@@ -37,7 +37,6 @@ public class TeleOpExample extends BrickOpMode {
 
     @Override
     public void run() {
-
     }
 
 }

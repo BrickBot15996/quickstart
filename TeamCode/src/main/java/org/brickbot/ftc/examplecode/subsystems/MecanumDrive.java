@@ -138,6 +138,12 @@ public class MecanumDrive extends Subsystem {
     public void read() {
         pinpoint.update();
 
+         kP =  Constants.MecanumDriveConstants.kP;
+         kD = Constants.MecanumDriveConstants.kD;
+         kF = Constants.MecanumDriveConstants.kF;
+         kS = Constants.MecanumDriveConstants.kS;
+         kStatic = Constants.MecanumDriveConstants.kStatic;
+
         headingController.setConstants(kP, kD, kF, kS);
 
         if (!isLocalizationEnabled) {

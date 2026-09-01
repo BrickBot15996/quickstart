@@ -9,9 +9,9 @@ public final class Constants {
         private MecanumDriveConstants() {}
         public static double kP = 0;
         public static double kD  = 0;
-        public static double kF = 0;
+        public static double kF = 0.085;
         public static double kS = 0;
-        public static double kStatic = 0;
+        public static double kStatic = 0.067;
     }
     @Configurable
     public static class TurretConstants {
