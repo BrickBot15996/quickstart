@@ -1,10 +1,10 @@
 package org.brickbot.ftc.examplecode;
-import com.bylazar.configurables.annotations.Configurable;
+//import com.bylazar.configurables.annotations.Configurable;
 
-@Configurable
+//@Configurable
 public final class Constants {
     private Constants() {}
-    @Configurable
+   // @Configurable
     public static class MecanumDriveConstants {
         private MecanumDriveConstants() {}
         public static double kP = 0;
@@ -13,7 +13,7 @@ public final class Constants {
         public static double kS = 0;
         public static double kStatic = 0.067;
     }
-    @Configurable
+    //@Configurable
     public static class TurretConstants {
         private TurretConstants() {}
         //Servo Limits

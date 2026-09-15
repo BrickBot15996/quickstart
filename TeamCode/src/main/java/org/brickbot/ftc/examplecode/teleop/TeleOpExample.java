@@ -1,8 +1,4 @@
 package org.brickbot.ftc.examplecode.teleop;
-
-import com.bylazar.field.Style;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.math.Vector;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.brickbot.ftc.examplecode.RobotHardware;
